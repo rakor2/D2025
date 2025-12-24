@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Scratch Card</title>
+<style>
+    body {
+        background: #eee;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+
+    .wrapper {
+        position: relative;
+        width: 400px;
+        height: 400px;
+    }
+
+    canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 400px;
+        height: 400px;
+        border: 2px solid #333;
+    }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+    <canvas id="imageCanvas" width="1024" height="1024"></canvas>
+    <canvas id="scratchCanvas" width="1024" height="1024"></canvas>
+</div>
+
+<script>
+const SIZE = 1024;
+const THRESHOLD = 0.95;
+
+const imageCanvas = document.getElementById("imageCanvas");
+const imageCtx = imageCanvas.getContext("2d");
+
+const scratchCanvas = document.getElementById("scratchCanvas");
+const scratchCtx = scratchCanvas.getContext("2d");
+
+let isDrawing = false;
+let revealed = false;
+
+const img = new Image();
+img.src = "d.png";
+
+img.onload = () => {
+    imageCtx.drawImage(img, 0, 0, SIZE, SIZE);
+    drawScratchLayer();
+};
+
+img.onerror = () => {
+    imageCtx.fillStyle = "red";
+    imageCtx.fillRect(0, 0, SIZE, SIZE);
+    drawScratchLayer();
+};
+
+function drawScratchLayer() {
+    scratchCtx.globalCompositeOperation = "source-over";
+    scratchCtx.fillStyle = "#999";
+    scratchCtx.fillRect(0, 0, SIZE, SIZE);
+}
+
+scratchCanvas.addEventListener("mousedown", () => isDrawing = true);
+scratchCanvas.addEventListener("mouseup", () => isDrawing = false);
+scratchCanvas.addEventListener("mouseleave", () => isDrawing = false);
+
+scratchCanvas.addEventListener("mousemove", (e) => {
+    if (!isDrawing || revealed) return;
+
+    const rect = scratchCanvas.getBoundingClientRect();
+
+    const scaleX = SIZE / rect.width;
+    const scaleY = SIZE / rect.height;
+
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    scratchCtx.globalCompositeOperation = "destination-out";
+    scratchCtx.beginPath();
+    scratchCtx.arc(x, y, 60, 0, Math.PI * 2);
+    scratchCtx.fill();
+
+    checkCompletion();
+});
+
+function checkCompletion() {
+    const data = scratchCtx.getImageData(0, 0, SIZE, SIZE).data;
+    let transparent = 0;
+
+    for (let i = 3; i < data.length; i += 4) {
+        if (data[i] === 0) transparent++;
+    }
+
+    if (transparent / (data.length / 4) >= THRESHOLD) {
+        reveal();
+    }
+}
+
+function reveal() {
+    revealed = true;
+    scratchCanvas.style.display = "none";
+}
+</script>
+
+</body>
+</html>
